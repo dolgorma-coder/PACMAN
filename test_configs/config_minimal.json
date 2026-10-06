@@ -1,0 +1,4 @@
+# Minimal config file relying on internal default values
+{
+  "seed": 42
+}
