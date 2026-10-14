@@ -1,5 +1,5 @@
 CONFIG ?= config.json
-MAIN = pac_man.py
+MAIN = pac-man.py
 RUN = uv run --python=3.12 python3
 
 .PHONY: install run debug clean lint lint-strict
