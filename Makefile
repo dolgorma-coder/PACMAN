@@ -1,24 +1,27 @@
-.PHONY: install run debug clean lint
+CONFIG ?= config.json
+MAIN = pac_man.py
+RUN = uv run --python=3.12 python3
+
+.PHONY: install run debug clean lint lint-strict
 
 install:
-	uv venv
-	uv pip install pygame flake8 mypy pytest
+	uv pip install *.whl 
+	uv sync
 
 run:
-	uv run pac-man.py config.json
+	$(RUN) $(MAIN) $(CONFIG)
 
 debug:
-	uv run python3 -m pdb pac-man.py config.json
+	$(RUN) -m pdb $(MAIN) $(CONFIG)
 
 clean:
-	rm -rf __pycache__ .mypy_cache .pytest_cache
-	find . -type f -name "*.pyc" -delete
+	find . -path ./.venv -prune -o -type d -name __pycache__ -exec rm -rf {} +
+	rm -rf .mypy_cache .pytest_cache
+	rm -f highscores.json
 
 lint:
 	uv run flake8 .
-	uv run mypy . --warn-return-any --warn-unused-ignores \
-		--ignore-missing-imports --disallow-untyped-defs \
-		--check-untyped-defs
+	uv run mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 lint-strict:
 	uv run flake8 .

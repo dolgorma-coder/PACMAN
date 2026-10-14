@@ -13,7 +13,7 @@ MAX_NAME_LENGTH = 10
 MAX_SCORE = 999_999_999
 
 
-def _is_allowed_char(char: str) -> bool:
+def is_allowed_char(char: str) -> bool:
     """True for ASCII letters, digits and the space character."""
     return char.isascii() and (char.isalnum() or char == " ")
 
@@ -24,7 +24,7 @@ def sanitize_name(raw_name: str) -> str:
     Forbidden characters are dropped, surrounding spaces removed and the
     result is cut to MAX_NAME_LENGTH. It can be empty if nothing was valid.
     """
-    cleaned = "".join(char for char in raw_name if _is_allowed_char(char))
+    cleaned = "".join(char for char in raw_name if is_allowed_char(char))
     return cleaned.strip()[:MAX_NAME_LENGTH]
 
 
@@ -36,7 +36,7 @@ def is_valid_name(name: str) -> bool:
     return (
         0 < len(name) <= MAX_NAME_LENGTH
         and bool(name.strip())
-        and all(_is_allowed_char(char) for char in name)
+        and all(is_allowed_char(char) for char in name)
     )
 
 

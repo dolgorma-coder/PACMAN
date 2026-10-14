@@ -29,14 +29,14 @@ class LevelConfig:
 
 
 def default_levels(seed: int = DEFAULT_SEED) -> tuple[LevelConfig, ...]:
-    """Return the default levels: square mazes growing one cell per level.
+    """Return the default levels: square mazes growing every two levels.
 
     Args:
         seed: Seed of the first level. All the other levels are random.
     """
     levels = []
     for index in range(DEFAULT_LEVEL_COUNT):
-        size = DEFAULT_MAZE_SIZE + index
+        size = DEFAULT_MAZE_SIZE + index // 2
         level_seed = seed if index == 0 else 0
         levels.append(LevelConfig(size, size, level_seed))
     return tuple(levels)
@@ -68,9 +68,8 @@ class GameConfig:
     points_per_ghost: int = 200
     seed: int = DEFAULT_SEED
     level_max_time: int = 90
-    levels: tuple[LevelConfig, ...] = field(default_factory=default_levels)
-
     super_pacgum_duration: float = 8.0
     ghost_respawn_delay: float = 5.0
-    player_speed: float = 6.0
-    ghost_speed: float = 5.0
+    player_speed: float = 8.0
+    ghost_speed: float = 6.0
+    levels: tuple[LevelConfig, ...] = field(default_factory=default_levels)

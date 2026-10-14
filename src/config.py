@@ -151,6 +151,10 @@ def _read_levels(data: dict[str, Any], seed: int) -> tuple[LevelConfig, ...]:
     return tuple(levels)
 
 
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
 def strip_comments(text: str) -> str:
     """Blank out comment lines (starting with `#` or `//`).
 
@@ -189,6 +193,7 @@ def load_config(path: str | Path) -> GameConfig:
             if its top level is not a JSON object.
     """
     try:
+        # "utf-8-sig" also accepts files saved with a BOM (Windows editors).
         with open(path, encoding="utf-8-sig") as config_file:
             text = config_file.read()
     except FileNotFoundError:
@@ -199,6 +204,8 @@ def load_config(path: str | Path) -> GameConfig:
     try:
         data = json.loads(strip_comments(text))
     except (ValueError, RecursionError) as error:
+        # ValueError covers JSONDecodeError and absurdly long numbers;
+        # RecursionError covers absurdly nested files.
         raise ConfigError(f"Invalid JSON in {path}: {error}") from error
     if not isinstance(data, dict):
         raise ConfigError(f"Invalid {path}: top level must be an object.")

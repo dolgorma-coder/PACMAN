@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import Protocol
 
 
 # ---------------------------------------------------------------------------
@@ -62,8 +63,41 @@ class Position:
         return Position(self.x + direction.dx, self.y + direction.dy)
 
     def distance_to(self, other: Position) -> int:
-        """Return the¡ distance (|dx| + |dy|) to `other` position."""
+        """Return the Manhattan distance (|dx| + |dy|) to `other`."""
         return abs(self.x - other.x) + abs(self.y - other.y)
+
+
+# ---------------------------------------------------------------------------
+# Continuous movement
+#
+# Players and ghosts glide from cell to cell: `position` is the cell they
+# left, `direction` is where they are heading and `move_progress` (0 to 1)
+# tells how much of the way to the next cell is done.
+# ---------------------------------------------------------------------------
+
+class Moving(Protocol):
+    """Anything that glides from cell to cell (the player and the ghosts)."""
+
+    position: Position
+    direction: Direction
+    move_progress: float
+
+
+def exact_position(mover: Moving) -> tuple[float, float]:
+    """Return where a mover really is, in cells (fractions allowed).
+
+    This is what has to be drawn and used for collisions.
+    """
+    progress = min(1.0, max(0.0, mover.move_progress))
+    return (mover.position.x + mover.direction.dx * progress,
+            mover.position.y + mover.direction.dy * progress)
+
+
+def current_tile(mover: Moving) -> Position:
+    """Return the cell the mover is closest to."""
+    if mover.move_progress >= 0.5:
+        return mover.position.moved(mover.direction)
+    return mover.position
 
 
 # ---------------------------------------------------------------------------
@@ -79,10 +113,13 @@ class Player:
         lives: Remaining lives. The game is over when it reaches 0.
         speed: Cells per second.
         score: Current score. It never decreases.
-        position: Current cell (starts on `spawn`).
-        direction: Direction of the current movement.
+        position: Cell the player left (starts on `spawn`).
+        direction: Direction of the current movement (NONE = standing).
         next_direction: Direction requested by the keyboard, applied as soon
             as the way is free (makes turning feel responsive).
+        move_progress: Part of the way to the next cell already done (0-1).
+        facing: Last direction the player moved in. The ghosts use it to
+            guess where the player is going, even if it is standing.
     """
 
     spawn: Position
@@ -92,6 +129,8 @@ class Player:
     position: Position = field(init=False)
     direction: Direction = Direction.NONE
     next_direction: Direction = Direction.NONE
+    move_progress: float = 0.0
+    facing: Direction = Direction.LEFT
 
     def __post_init__(self) -> None:
         """Start on the spawn cell."""
@@ -115,6 +154,8 @@ class Player:
         self.position = self.spawn
         self.direction = Direction.NONE
         self.next_direction = Direction.NONE
+        self.move_progress = 0.0
+        self.facing = Direction.LEFT
 
     def start_level(self, spawn: Position) -> None:
         """Prepare for a new level: new spawn, same lives and score."""
@@ -129,7 +170,7 @@ class Player:
 class GhostState(Enum):
     """Behaviour mode of a ghost."""
 
-    CHASING = auto()   # Normal: hunts the player.
+    CHASING = auto()   # Normal: hunts the player (or goes to its corner).
     EDIBLE = auto()    # Super-pacgum eaten: runs away, can be eaten.
     EATEN = auto()     # Was eaten: waits at home before coming back.
 
@@ -139,13 +180,17 @@ class Ghost:
     """An enemy ghost.
 
     Attributes:
-        name: Identifier of the ghost (also useful to pick its colour).
-        home: Corner where the ghost starts and respawns.
-        position: Current cell (starts on `home`).
+        name: Identifier of the ghost. It also selects its personality.
+        home: Corner where the ghost starts, respawns and hides in the
+            scatter phases.
+        position: Cell the ghost left (starts on `home`).
         speed: Cells per second.
-        direction: Direction of the current movement.
+        direction: Direction of the current movement (NONE = standing).
         state: Current behaviour mode.
         timer: Seconds left in the EDIBLE or EATEN state.
+        move_progress: Part of the way to the next cell already done (0-1).
+        angry: True while the ghost is in its "angry" mode (Blinky when few
+            pacgums are left): it is faster and never stops chasing.
     """
 
     name: str
@@ -155,6 +200,8 @@ class Ghost:
     direction: Direction = Direction.NONE
     state: GhostState = GhostState.CHASING
     timer: float = 0.0
+    move_progress: float = 0.0
+    angry: bool = False
 
     def __post_init__(self) -> None:
         """Start on the home cell."""
@@ -182,6 +229,7 @@ class Ghost:
         self.timer = respawn_delay
         self.position = self.home
         self.direction = Direction.NONE
+        self.move_progress = 0.0
 
     def update_timer(self, delta_time: float) -> None:
         """Advance the countdown; at zero the ghost goes back to CHASING."""
@@ -204,3 +252,4 @@ class Ghost:
         self.direction = Direction.NONE
         self.state = GhostState.CHASING
         self.timer = 0.0
+        self.move_progress = 0.0
