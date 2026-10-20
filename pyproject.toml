@@ -2,8 +2,8 @@
 name = "pacman"
 version = "1.0.0"
 authors = [
-	dzhambal
-	jaatif-a
+	"dzhambal",
+	"jaatif-a"
 ]
 description = "Pac-Man game developed for the 42 cursus."
 readme = "README.md"

@@ -1,224 +1,158 @@
-"""Drawing of the game screen: maze, items, entities, HUD and pause menu."""
+"""Game view: draws the maze, items, entities, HUD, pause menu and charts.
+This module uses only basic primitives and contains no graphical library imports.
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from src.app import App
-from src.ghost_modes import GhostMode
-from src.models.app_models import PauseItem
-from src.models.entity_models import Direction, Ghost, Position, exact_position
-from src.models.game_state import GameState, GameStatus
-from src.models.maze_models import MOVE_DIRECTIONS, Maze
-from src.ui_example.ui_canvas import Canvas, Layer
-from src.ui_example.ui_theme import (FOOTER_HEIGHT, GHOST_COLORS, GRAY, GREEN,
-                                     HIGHLIGHT, HUD_HEIGHT, MAX_CELL_SIZE,
-                                     MIN_CELL_SIZE, PANEL, PELLET,
-                                     RED, SCARED_BLUE, SOLID_CELL,
-                                     WALL_BLUE, WHITE, YELLOW,
-                                     Color)
-
-FLASH_SECONDS = 2.0       # Edible ghosts flash when this close to the end.
-
-
-@dataclass(frozen=True)
-class Geometry:
-    """Where the maze is drawn on the screen.
-
-    Attributes:
-        cell: Size of a maze cell, in pixels.
-        left: X of the maze's left edge.
-        top: Y of the maze's top edge.
-    """
-
-    cell: int
-    left: int
-    top: int
-
-    def center(self, column: float, row: float) -> tuple[int, int]:
-        """Pixel at the center of a (possibly fractional) cell position."""
-        return (round(self.left + (column + 0.5) * self.cell),
-                round(self.top + (row + 0.5) * self.cell))
-
-
-def make_geometry(maze: Maze, width: int, height: int) -> Geometry:
-    """Fit the maze in the free area of a `width` x `height` window."""
-    free_height = height - HUD_HEIGHT - FOOTER_HEIGHT
-    cell = min(MAX_CELL_SIZE, width // maze.width, free_height // maze.height)
-    cell = max(MIN_CELL_SIZE, cell)
-    left = (width - cell * maze.width) // 2
-    top = HUD_HEIGHT + (free_height - cell * maze.height) // 2
-    return Geometry(cell, left, top)
+from src.models.game_state import GameStatus
+from src.renderer import GameRenderer
+from src.ui_example.ui_canvas import Canvas
+from src.ui_example.ui_theme import (DARK_BLUE, WHITE, NEON_YELLOW, GRAY, 
+                                     NEON_ORANGE, GRAY_BORDER, TEXT_WHITE, 
+                                     LIGHT_BLUE)
 
 
 class GameView:
-    """Draws a game in progress. The maze picture is made once per level."""
+    """The view of a game in progress: splits the screen into HUD and maze."""
 
     def __init__(self, canvas: Canvas) -> None:
-        """Create the view for a canvas."""
+        """Инициализируем неоновый графический движок, сохраняя холст для HUD."""
         self.canvas = canvas
-        self._cache: tuple[Maze, Geometry, Layer] | None = None
+        
+        # Безопасно вытаскиваем экран Pygame из буферов canvas
+        pygame_screen = getattr(canvas, '_target', None)
+        if pygame_screen is None:
+            pygame_screen = getattr(canvas, '_screen', pygame.display.get_surface())
 
-    def draw(self, app: App, now_ms: int) -> None:
-        """Draw the whole game screen."""
-        engine = app.engine
-        if engine is None:
+        # Передаем экран в твой кастомный рендерер лабиринта
+        self.game_renderer = GameRenderer(pygame_screen, tile_size=32)
+
+    def draw(self, app: App, now: int) -> None:
+        """Рендерит игру, используя исключительно независимые примитивы Canvas и Renderer."""
+        if app.engine is None:
             return
-        state = engine.state
-        maze = state.level.maze
-        if self._cache is None or self._cache[0] is not maze:
-            self._cache = self._build_cache(maze)
-        _, geometry, layer = self._cache
 
-        self.canvas.draw_layer(layer)
-        self._draw_items(state, geometry)
-        self._draw_ghosts(state, geometry, now_ms)
-        self._draw_player(state, geometry)
-        self._draw_hud(state)
-        self._draw_footer(state, engine.modes.mode)
-        if state.status == GameStatus.PAUSED:
-            self._draw_pause_menu(app.pause_index)
+        # 1. ЗАДНИЙ ФОН: Полностью очищаем виртуальный холст тёмно-синим цветом темы
+        self.canvas.clear(DARK_BLUE)
 
-    # -----------------------------------------------------------------
-    # Maze (drawn once per level)
-    # -----------------------------------------------------------------
-
-    def _build_cache(self, maze: Maze) -> tuple[Maze, Geometry, Layer]:
-        """Draw the maze on an off-screen image."""
-        geometry = make_geometry(maze, self.canvas.width,
-                                 self.canvas.height)
-        layer = self.canvas.record(lambda: self._draw_maze(maze, geometry))
-        return maze, geometry, layer
-
-    def _draw_maze(self, maze: Maze, geometry: Geometry) -> None:
-        """Draw the solid cells and the walls."""
-        size = geometry.cell
-        for y in range(maze.height):
-            for x in range(maze.width):
-                position = Position(x, y)
-                left = geometry.left + x * size
-                top = geometry.top + y * size
-                if not maze.is_walkable(position):
-                    self.canvas.fill_rect(left, top, size, size, SOLID_CELL)
-                    continue
-                for direction in MOVE_DIRECTIONS:
-                    if maze.has_wall(position, direction):
-                        self._draw_wall(left, top, size, direction)
-
-    def _draw_wall(self, left: int, top: int, size: int,
-                   direction: Direction) -> None:
-        """Draw one side of a cell."""
-        right, bottom = left + size, top + size
-        edges = {
-            Direction.UP: (left, top, right, top),
-            Direction.RIGHT: (right, top, right, bottom),
-            Direction.DOWN: (left, bottom, right, bottom),
-            Direction.LEFT: (left, top, left, bottom),
-        }
-        x1, y1, x2, y2 = edges[direction]
-        self.canvas.line(x1, y1, x2, y2, WALL_BLUE, 2)
-
-    # -----------------------------------------------------------------
-    # Items and entities
-    # -----------------------------------------------------------------
-
-    def _draw_items(self, state: GameState, geometry: Geometry) -> None:
-        """Draw pacgums (small) and super-pacgums (big)."""
-        for position in state.level.pacgums:
-            x, y = geometry.center(position.x, position.y)
-            self.canvas.fill_circle(x, y, geometry.cell // 8, PELLET)
-        for position in state.level.super_pacgums:
-            x, y = geometry.center(position.x, position.y)
-            self.canvas.fill_circle(x, y, geometry.cell // 3, PELLET)
-
-    def _draw_ghosts(self, state: GameState, geometry: Geometry,
-                     now_ms: int) -> None:
-        """Draw the ghosts at their real place.
-
-        An eaten ghost shows only two eyes while it waits at home; an angry
-        one has a white ring.
-        """
-        radius = int(geometry.cell * 0.4)
-        for ghost in state.ghosts:
-            x, y = geometry.center(*exact_position(ghost))
-            if ghost.is_eaten:
-                eye = max(1, radius // 3)
-                self.canvas.fill_circle(x - eye * 2, y, eye, WHITE)
-                self.canvas.fill_circle(x + eye * 2, y, eye, WHITE)
-                continue
-            self.canvas.fill_circle(x, y, radius,
-                                    self._ghost_color(ghost, now_ms))
-            if ghost.angry:
-                self.canvas.outline_circle(x, y, radius + 3, WHITE, 2)
-
-    @staticmethod
-    def _ghost_color(ghost: Ghost, now_ms: int) -> Color:
-        """Own color, blue when edible, white flashes before it ends."""
-        if not ghost.is_edible:
-            return GHOST_COLORS.get(ghost.name, RED)
-        if ghost.timer < FLASH_SECONDS and (now_ms // 200) % 2 == 0:
-            return WHITE
-        return SCARED_BLUE
-
-    def _draw_player(self, state: GameState, geometry: Geometry) -> None:
-        """Draw the player at its real place."""
-        x, y = geometry.center(*exact_position(state.player))
-        self.canvas.fill_circle(x, y, int(geometry.cell * 0.42), YELLOW)
-
-    # -----------------------------------------------------------------
-    # HUD, footer and pause menu
-    # -----------------------------------------------------------------
-
-    def _draw_hud(self, state: GameState) -> None:
-        """Top bar: score, lives, level and remaining time."""
-        canvas = self.canvas
-        seconds = max(0, int(state.time_left))
-        canvas.text(f"SCORE {state.player.score}", 20, 16, WHITE, 34)
-        canvas.text(f"LIVES {state.player.lives}", 300, 16, WHITE, 34)
-        canvas.text(f"LEVEL {state.level_number}/{state.level_count}", 480,
-                    16, WHITE, 34)
-        canvas.text(f"TIME {seconds}", canvas.width - 20, 16,
-                    RED if seconds <= 10 else WHITE, 34, "right")
-        canvas.line(0, HUD_HEIGHT - 2, canvas.width, HUD_HEIGHT - 2,
-                    WALL_BLUE, 1)
-
-    def _draw_footer(self, state: GameState, mode: GhostMode) -> None:
-        """Bottom bar: key hints, state of the cheats and ghost phase."""
-        cheats = state.cheats
-        canvas = self.canvas
-        y = canvas.height - FOOTER_HEIGHT + 8
-        if cheats.enabled:
-            def flag(active: bool) -> str:
-                return "ON" if active else "off"
-
-            canvas.text(
-                f"CHEATS ON  F2 invincible {flag(cheats.invincible)}  "
-                f"F3 freeze {flag(cheats.freeze_ghosts)}  "
-                f"F4 fast {flag(cheats.fast_player)}  F5 skip  "
-                f"F6 +1 life  F1 off", 20, y, GREEN, 18)
+        state_obj = app.engine.state
+        maze_obj = state_obj.level.maze
+        
+        # Безопасный перебор возможных имен буфера матрицы Джамаля
+        grid_matrix = None
+        for attr_name in ['grid', '_grid', 'matrix', 'map', 'board', 'cells']:
+            if hasattr(maze_obj, attr_name):
+                grid_matrix = getattr(maze_obj, attr_name)
+                break
         else:
-            canvas.text("P / Esc: pause     F1 (or 1): cheat mode "
-                        "(for reviewers)", 20, y, GRAY, 20)
+            return
 
-        label = f"Ghosts: {mode.name}"
-        if any(ghost.angry for ghost in state.ghosts):
-            label += "  (Blinky ANGRY)"
-        canvas.text(label, canvas.width - 20, y,
-                    RED if mode == GhostMode.CHASE else WHITE, 20, "right")
+        canvas_w = self.canvas.width
+        canvas_h = self.canvas.height
 
-    def _draw_pause_menu(self, selected: int) -> None:
-        """A panel over the game with the pause menu."""
-        canvas = self.canvas
-        center = canvas.width // 2
-        canvas.fill_rect(center - 260, 230, 520, 250, PANEL)
-        canvas.outline_rect(center - 260, 230, 520, 250, YELLOW)
-        canvas.text("PAUSED", center, 255, YELLOW, 64, "center")
-        for index, item in enumerate(PauseItem):
-            y = 340 + index * 56
-            if index == selected:
-                canvas.fill_rect(center - 230, y - 8, 460, 46, HIGHLIGHT)
-            canvas.text(item.value, center, y,
-                        YELLOW if index == selected else WHITE, 36,
-                        "center")
-        canvas.text("Up / Down + Enter    P or Esc: resume", center, 440,
-                    GRAY, 22, "center")
+        offset_x, offset_y, final_maze_w = self.canvas.draw_game_field(
+            110, 65, grid_matrix, 
+            state_obj.level.pacgums, state_obj.level.super_pacgums,
+            state_obj.player, state_obj.ghosts
+        )
+
+        # =====================================================================
+        # 👑 МАТЕМАТИЧЕСКИЙ АВТОЛЕЙАУТ ВЕРХНЕЙ ПАНЕЛЕЙ HUD (Ширина окна 1280px)
+        # =====================================================================
+        col1_center = 160   # Зона SCORE 
+        col2_center = 480   # Зона TIME  
+        col3_center = 800   # Зона LEVEL 
+        col4_center = 1120  # Зона HIGH SCORE 
+
+        text_y = 25
+        digits_y = 34
+
+        # --- 1. АВТОЛЕЙАУТ ДЛЯ SCORE ---
+        player_model = state_obj.player
+        current_score = getattr(player_model, 'score', 0)
+        score_str = str(current_score)
+        total_score_w = (7 * 16) + (len(score_str) * 20)  # Буквы 16px, цифры 20px (DotGothic)
+        start_score_x = col1_center - total_score_w // 2
+        
+        self.canvas.text("SCORE: ", start_score_x, text_y, LIGHT_BLUE, 20)
+        self.canvas.text(score_str, start_score_x + (7 * 16), digits_y, WHITE, 16)
+
+        # --- 2. АВТОЛЕЙАУТ ДЛЯ TIME (Живой таймер из бэкенда Джамаля) ---
+        time_left_secs = int(getattr(state_obj, 'time_left', 0))
+        minutes = time_left_secs // 60
+        seconds = time_left_secs % 60
+        time_digits = f"{minutes:02d}:{seconds:02d}"
+        
+        total_time_w = (6 * 16) + (5 * 20)  
+        start_time_x = col2_center - total_time_w // 2
+        
+        self.canvas.text("TIME: ", start_time_x, text_y, LIGHT_BLUE, 20)
+        self.canvas.text(time_digits, start_time_x + (6 * 16), digits_y, WHITE, 16)
+
+        # --- 3. АВТОЛЕЙАУТ ДЛЯ LEVEL ---
+        level_str = str(state_obj.level_number)
+        total_level_w = (7 * 16) + (len(level_str) * 20)  
+        start_level_x = col3_center - total_level_w // 2
+        
+        self.canvas.text("LEVEL: ", start_level_x, text_y, LIGHT_BLUE, 20)
+        self.canvas.text(level_str, start_level_x + (7 * 16), digits_y, WHITE, 16)
+
+        # --- 4. АВТОЛЕЙАУТ ДЛЯ HIGH SCORE (Считываем из списка) ---
+        high_score = 0
+        if hasattr(app, 'highscores') and app.highscores and len(app.highscores) > 0:
+            first_entry = app.highscores[0]
+            if hasattr(first_entry, 'score'):
+                high_score = first_entry.score
+            elif isinstance(first_entry, dict) and 'score' in first_entry:
+                high_score = first_entry['score']
+                
+        hs_str = str(high_score)
+        total_hs_w = (12 * 16) + (len(hs_str) * 20)  
+        start_hs_x = col4_center - total_hs_w // 2
+        
+        self.canvas.text("HIGH SCORE: ", start_hs_x, text_y, LIGHT_BLUE, 20)
+        self.canvas.text(hs_str, start_hs_x + (12 * 16), digits_y, WHITE, 16)
+
+        # --- 5. СТРОКА ПОДСКАЗОК ЧИТ-РЕЖИМА ---
+        if getattr(app, 'cheat_mode', False) or (hasattr(state_obj, 'cheats') and state_obj.cheats.enabled):
+            cheat_hint = "CHEAT MODE ACTIVE:  F2: INVINCIBLE  |  F3: FREEZE GHOSTS  |  F5: SKIP LEVEL"
+            self.canvas.text(cheat_hint, canvas_w // 2, 70, NEON_YELLOW, 14, "center")
+
+        # =====================================================================
+        # ❤️ ДИНАМИЧЕСКАЯ НИЖНЯЯ ПАНЕЛЬ ЖИЗНЕЙ (Strictly using get_pacman_tile)
+        # =====================================================================
+        lives_y = offset_y + final_maze_w + 20
+        self.canvas.text("LIVES: ", offset_x, lives_y, WHITE, 16)
+        
+        for i in range(player_model.lives):
+            life_x = offset_x + 95 + (i * 38)
+            # ИСПРАВЛЕНО: Забираем Пакмана строго через твой унифицированный get_pacman_tile(2, 0)!
+            if hasattr(self.canvas, 'game_renderer'):
+                life_sprite = self.canvas.game_renderer.get_pacman_tile(2, 0)
+                self.canvas._target.blit(life_sprite, (life_x, lives_y - 6))
+
+
+        # =====================================================================
+        # 👑 БЛОК ПАУЗЫ (Полностью на твоем PNG-спрайте 520х280 из Figma)
+        # =====================================================================
+        if state_obj.status == GameStatus.PAUSED:
+            # Накладываем матовую темно-синюю вуаль на задний план игры
+            self.canvas.fill_rect(0, 0, canvas_w, canvas_h, (16, 16, 28, 180))
+            
+            # Всплывающее окошко паузы строго по размерам твоего спрайта!
+            menu_w, menu_h = 520, 280
+            menu_x = canvas_w // 2 - menu_w // 2
+            menu_y = canvas_h // 2 - menu_h // 2
+            
+            # Блиттим твою шикарную пиксельную графику окна вместо системных рамок Pygame
+            if hasattr(self.canvas, 'dialog_img') and self.canvas.dialog_img:
+                self.canvas.draw_image(self.canvas.dialog_img, menu_x, menu_y)
+            else:
+                # Безопасная подстраховка на случай, если файл dialog.png случайно удалят
+                self.canvas.fill_rect(menu_x, menu_y, menu_w, menu_h, DARK_BLUE)
+                self.canvas.outline_rect(menu_x, menu_y, menu_w, menu_h, NEON_ORANGE, thickness=2)
+            
+            # ТЕКСТ ПАУЗЫ (Идеально ложится поверх твоей картинки из Figma)
+            self.canvas.text("GAME PAUSED", canvas_w // 2, menu_y + 80, NEON_YELLOW, 22, "center")
+            self.canvas.text("Press P or ESC to Resume", canvas_w // 2, menu_y + 160, TEXT_WHITE, 14, "center")
