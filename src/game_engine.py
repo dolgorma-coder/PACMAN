@@ -53,7 +53,7 @@ CHEAT_SPEED_FACTOR = 2.0      # Speed multiplier of the "fast player" cheat.
 MAX_LIVES = 99
 RETRIES = 3                   # Random mazes tried when a level fails.
 ANGRY_GHOST = "blinky"
-
+EATEN_SPEED_FACTOR = 1      # Eyes rush back home.
 
 class GameEngine:
     """Runs one game, from the first level to victory or game over."""
@@ -173,7 +173,8 @@ class GameEngine:
     def _closing_speed(self) -> float:
         """Most cells per second two entities can approach each other."""
         ghost_speeds = [self._ghost_speed(ghost)
-                        for ghost in self.state.ghosts]
+                        for ghost in self.state.ghosts
+                        if not ghost.is_eaten]
         return self._player_speed() + max(ghost_speeds, default=0.0)
 
     # -----------------------------------------------------------------
@@ -246,8 +247,8 @@ class GameEngine:
         elif state.level.eat_super_pacgum(position):
             state.player.add_score(self.config.points_per_super_pacgum)
             for ghost in state.ghosts:
+                ghost.make_edible(self.config.super_pacgum_duration)
                 if not ghost.is_eaten:
-                    ghost.make_edible(self.config.super_pacgum_duration)
                     _reverse(ghost)
 
     # -----------------------------------------------------------------
@@ -256,6 +257,8 @@ class GameEngine:
 
     def _ghost_speed(self, ghost: Ghost) -> float:
         """Speed of a ghost in cells per second, in its current state."""
+        if ghost.is_eaten:
+            return ghost.speed * EATEN_SPEED_FACTOR
         if ghost.is_edible:
             return ghost.speed * EDIBLE_SPEED_FACTOR
         if ghost.angry:
@@ -279,8 +282,6 @@ class GameEngine:
         if self.state.cheats.freeze_ghosts:
             return
         for ghost in self.state.ghosts:
-            if ghost.is_eaten:
-                continue                  # Waiting at home.
             if ghost.direction == Direction.NONE:
                 ghost.direction = self._choose_direction(ghost)
             distance = self._ghost_speed(ghost) * dt

@@ -70,6 +70,19 @@ class GameRenderer:
         self.food_sheet = pygame.image.load(
             os.path.join(assets_dir, "pacgum_sprites.png"))
 
+        # Eyes of an eaten ghost: one small image per direction
+        self.eyes_sprites: dict[Direction, pygame.Surface] = {}
+        for direction, file_name in (
+                (Direction.UP, "eyesup.png"),
+                (Direction.DOWN, "eyesdown.png"),
+                (Direction.LEFT, "eyesleft.png"),
+                (Direction.RIGHT, "eyesright.png")):
+            try:
+                self.eyes_sprites[direction] = pygame.image.load(
+                    os.path.join(assets_dir, file_name)).convert_alpha()
+            except (pygame.error, FileNotFoundError):
+                pass          # Missing file: circles are drawn instead.
+
         # Autotile layout map to match Figma grid parameters
         self.autotile_map: dict[int, tuple[int, int]] = {
             1:  (0, 0), 4:  (1, 0), 8:  (2, 0), 2:  (3, 0),  # Straight lines
@@ -124,7 +137,40 @@ class GameRenderer:
                         row_index: int) -> pygame.Surface:
         """Slice a single 32x32 ghost sprite using the Figma layout."""
         return self._slice_sprite(col_index, row_index, self.ghost_sheet)
+    
+    def _draw_ghost_eyes(self, left: int, top: int,
+                         direction: Direction) -> None:
+        """Draw only the eyes of an eaten ghost (no body).
 
+        Args:
+            left: Left pixel of the ghost's cell.
+            top: Top pixel of the ghost's cell.
+            direction: Where the ghost is heading (the eyes look that way).
+        """
+        size = self.tile_size
+        # A ghost standing still (NONE) looks to the left.
+        sprite = (self.eyes_sprites.get(direction)
+                  or self.eyes_sprites.get(Direction.LEFT))
+        if sprite is not None:
+            rect = sprite.get_rect(center=(left + size // 2,
+                                           top + size // 2))
+            self.screen.blit(sprite, rect)
+            return
+
+        # Fallback: eyes drawn with circles.
+        eye_radius = max(3, size // 5)
+        pupil_radius = max(2, eye_radius // 2)
+        reach = eye_radius - pupil_radius
+        center_y = top + size // 2 - size // 10
+        for side in (-1, 1):
+            eye_x = left + size // 2 + side * (size // 5)
+            pygame.draw.circle(self.screen, (255, 255, 255),
+                               (eye_x, center_y), eye_radius)
+            pygame.draw.circle(
+                self.screen, (33, 33, 255),
+                (eye_x + direction.dx * reach,
+                 center_y + direction.dy * reach), pupil_radius)
+            
     # -----------------------------------------------------------------
     # Maze, player, ghosts
     # -----------------------------------------------------------------
@@ -344,6 +390,10 @@ class GameRenderer:
             g_x, g_y = exact_position(ghost)
             gx = int(g_x * self.tile_size)
             gy = int(g_y * self.tile_size)
+
+            if ghost.is_eaten:                    # Only eyes going home.
+                self._draw_ghost_eyes(gx, gy, ghost.direction)
+                continue
 
             g_col_idx, g_row_idx = 0, 0
 

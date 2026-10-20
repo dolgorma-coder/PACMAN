@@ -70,6 +70,6 @@ class GameConfig:
     level_max_time: int = 90
     super_pacgum_duration: float = 8.0
     ghost_respawn_delay: float = 5.0
-    player_speed: float = 8.0
-    ghost_speed: float = 6.0
+    player_speed: float = 6.0
+    ghost_speed: float = 4.0
     levels: tuple[LevelConfig, ...] = field(default_factory=default_levels)

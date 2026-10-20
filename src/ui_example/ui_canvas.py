@@ -117,10 +117,12 @@ class Canvas:
             self.ui_sheet = None
 
         # --- ТВОЕ НОВОЕ ДИАЛОГОВОЕ ОКНО ПАУЗЫ ИЗ FIGMA ---
+        # Pause dialog (already contains all its text)
         try:
-            self.dialog_img = pygame.image.load(os.path.join(assets_dir, "dialog.png")).convert_alpha()
+            self.pause_img = pygame.image.load(
+                os.path.join(assets_dir, "pause.png")).convert_alpha()
         except pygame.error:
-            self.dialog_img = None
+            self.pause_img = None
 
     # -----------------------------------------------------------------
     # Drawing
@@ -134,6 +136,12 @@ class Canvas:
                   color: Color) -> None:
         """Draw a filled rectangle."""
         pygame.draw.rect(self._target, color, (x, y, width, height))
+
+    def dim(self, color: tuple[int, int, int, int]) -> None:
+        """Darken the whole target with a translucent color."""
+        veil = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        veil.fill(color)
+        self._target.blit(veil, (0, 0))
 
     def outline_rect(self, x: int, y: int, width: int, height: int,
                      color: Color, thickness: int = 2) -> None:

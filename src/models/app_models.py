@@ -1,7 +1,7 @@
 """Vocabulary shared by the application logic and the user interface.
 
 The UI translates keyboard events into `Command` values and reads the
-`Screen`, `MenuItem` and `PauseItem` values to know what to draw.
+`Screen` and `MenuItem` values to know what to draw.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ class Screen(Enum):
     MENU = auto()
     HIGHSCORES = auto()
     INSTRUCTIONS = auto()
-    GAME = auto()         # Includes the pause menu.
+    GAME = auto()         # Includes the pause screen.
     GAME_END = auto()     # Game over / victory, with the name prompt.
 
 
@@ -31,6 +31,7 @@ class Command(Enum):
     CONFIRM = auto()      # Enter
     BACK = auto()         # Escape
     PAUSE = auto()        # P
+    MAIN_MENU = auto()    # M (only while paused)
     ERASE = auto()        # Backspace (name entry)
     CHEAT_MODE = auto()
     CHEAT_INVINCIBLE = auto()
@@ -60,6 +61,7 @@ INSTRUCTION_LINES: tuple[str, ...] = (
     "Controls",
     "  Arrow keys or WASD: move",
     "  P or Escape: pause / resume",
+    "  M (while paused): back to the main menu",
     "  Enter: confirm        Escape: go back",
     "",
     "Rules",

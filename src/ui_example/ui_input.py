@@ -28,9 +28,10 @@ KEY_COMMANDS: dict[int, Command] = {
     pygame.K_F5: Command.CHEAT_SKIP,
     pygame.K_F6: Command.CHEAT_LIFE,
 }
+# Keys that only work during the game: on the name screen digits and
+# letters are text. The number keys repeat the cheats for keyboards where
+# F-keys need "Fn"; M leaves the pause screen for the main menu.
 
-# Same cheats on the number keys, for keyboards where F-keys need "Fn".
-# They only work during the game: on the name screen digits are text.
 GAME_ONLY_KEYS: dict[int, Command] = {
     pygame.K_1: Command.CHEAT_MODE,
     pygame.K_2: Command.CHEAT_INVINCIBLE,
@@ -38,8 +39,8 @@ GAME_ONLY_KEYS: dict[int, Command] = {
     pygame.K_4: Command.CHEAT_SPEED,
     pygame.K_5: Command.CHEAT_SKIP,
     pygame.K_6: Command.CHEAT_LIFE,
+    pygame.K_m: Command.MAIN_MENU,
 }
-
 
 @dataclass
 class FrameInput:

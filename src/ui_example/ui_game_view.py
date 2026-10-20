@@ -137,22 +137,16 @@ class GameView:
         # 👑 БЛОК ПАУЗЫ (Полностью на твоем PNG-спрайте 520х280 из Figma)
         # =====================================================================
         if state_obj.status == GameStatus.PAUSED:
-            # Накладываем матовую темно-синюю вуаль на задний план игры
-            self.canvas.fill_rect(0, 0, canvas_w, canvas_h, (16, 16, 28, 180))
-            
-            # Всплывающее окошко паузы строго по размерам твоего спрайта!
-            menu_w, menu_h = 520, 280
-            menu_x = canvas_w // 2 - menu_w // 2
-            menu_y = canvas_h // 2 - menu_h // 2
-            
-            # Блиттим твою шикарную пиксельную графику окна вместо системных рамок Pygame
-            if hasattr(self.canvas, 'dialog_img') and self.canvas.dialog_img:
-                self.canvas.draw_image(self.canvas.dialog_img, menu_x, menu_y)
+            self.canvas.dim((16, 16, 28, 180))
+            pause_img = self.canvas.pause_img
+            if pause_img is not None:
+                menu_x = (canvas_w - pause_img.get_width()) // 2
+                menu_y = (canvas_h - pause_img.get_height()) // 2
+                self.canvas.draw_image(pause_img, menu_x, menu_y)
             else:
-                # Безопасная подстраховка на случай, если файл dialog.png случайно удалят
-                self.canvas.fill_rect(menu_x, menu_y, menu_w, menu_h, DARK_BLUE)
-                self.canvas.outline_rect(menu_x, menu_y, menu_w, menu_h, NEON_ORANGE, thickness=2)
-            
-            # ТЕКСТ ПАУЗЫ (Идеально ложится поверх твоей картинки из Figma)
-            self.canvas.text("GAME PAUSED", canvas_w // 2, menu_y + 80, NEON_YELLOW, 22, "center")
-            self.canvas.text("Press P or ESC to Resume", canvas_w // 2, menu_y + 160, TEXT_WHITE, 14, "center")
+                # Fallback if pause.png is missing
+                self.canvas.text("PAUSED", canvas_w // 2, canvas_h // 2 - 40,
+                                 NEON_YELLOW, 22, "center")
+                self.canvas.text("[P]/[ESC] resume  |  [M] main menu",
+                                 canvas_w // 2, canvas_h // 2 + 10,
+                                 TEXT_WHITE, 14, "center")
