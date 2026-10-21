@@ -27,11 +27,11 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Callable
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import pygame
 
-from src.ui_example.ui_theme import WHITE, Color
+from src.UI.ui_theme import WHITE, Color
 from src.renderer import GameRenderer
 
 
@@ -86,17 +86,22 @@ class Canvas:
         pygame.display.set_caption(title)
         self.width: int = width
         self.height = height
-        self._target = self._screen          # Where the drawing goes.
+        self._target = self._screen
         self._clock = pygame.time.Clock()
         self._last_frame = time.perf_counter()
         self._vsync = False
-        # self._vsync = bool(pygame.display.is_vsync())
+
+        self.menu_bg: Optional[pygame.Surface] = None
+        self.menu_logo_img: Optional[pygame.Surface] = None
+        self.ui_sheet: Optional[pygame.Surface] = None
+        self.pause_img: Optional[pygame.Surface] = None
 
         self._fonts: dict[tuple[str, int], pygame.font.Font] = {}
         assets_dir = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "assets"
-            )
-        self.menu_bg: pygame.Surface | None = None
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "assets"
+        )
+
         bg_path = os.path.join(assets_dir, "background.jpg")
         try:
             raw_bg = pygame.image.load(bg_path).convert()
@@ -267,8 +272,9 @@ class Canvas:
 
         if cache_key not in self._fonts:
             assets_dir = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), "assets"
-                )
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                "assets"
+            )
             font_path = os.path.join(assets_dir, font_name)
 
             try:

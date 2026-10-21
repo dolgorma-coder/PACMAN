@@ -1,11 +1,12 @@
 CONFIG ?= config.json
 MAIN = pac-man.py
 RUN = uv run --python=3.12 python3
+ITCH_TARGET ?= YOUR_USER/pacman
 
-.PHONY: install run debug clean lint lint-strict
+.PHONY: install run debug clean lint lint-strict package publish
 
 install:
-	uv pip install *.whl 
+	uv pip install *.whl
 	uv sync
 
 run:
@@ -16,7 +17,7 @@ debug:
 
 clean:
 	find . -path ./.venv -prune -o -type d -name __pycache__ -exec rm -rf {} +
-	rm -rf .mypy_cache .pytest_cache
+	rm -rf .mypy_cache .pytest_cache build dist
 	rm -f highscores.json
 
 lint:
@@ -26,3 +27,11 @@ lint:
 lint-strict:
 	uv run flake8 .
 	uv run mypy . --strict
+
+package:
+	uv run pyinstaller --noconfirm --clean pacman.spec
+	cp config.json PLAYER_README.txt dist/pacman/
+	cd dist && zip -r pacman-linux.zip pacman
+
+publish: package
+	butler push dist/pacman-linux.zip $(ITCH_TARGET):linux
