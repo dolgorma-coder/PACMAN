@@ -147,18 +147,24 @@ class GameEngine:
         if not self._playing() or not delta_time > 0:
             return
         dt = min(delta_time, MAX_FRAME_TIME)
+        player = self.state.player
+
+        if player.is_dying:
+            if player.update_death(dt):
+                self._after_death()
+            return
 
         self.state.time_left -= dt
         if self.state.time_left <= 0:
             self._on_timeout()
-            if not self._playing():
+            if not self._playing() or player.is_dying:
                 return
 
         steps = max(1, math.ceil(self._closing_speed() * dt
                                  / MAX_STEP_DISTANCE))
         for _ in range(steps):
             self._advance(dt / steps)
-            if not self._playing():
+            if not self._playing() or player.is_dying:
                 return
 
     def _advance(self, dt: float) -> None:
@@ -347,9 +353,12 @@ class GameEngine:
         return False
 
     def _lose_life(self) -> None:
-        """Take a life: game over, or everybody goes back to the start."""
+        """Take a life: the death animation starts, the game freezes."""
+        self.state.player.start_dying()
+
+    def _after_death(self) -> None:
+        """The animation ended: game over, or everybody back to the start."""
         player = self.state.player
-        player.lose_life()
         if not player.is_alive:
             self.state.status = GameStatus.GAME_OVER
             return

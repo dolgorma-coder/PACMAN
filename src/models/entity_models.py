@@ -15,6 +15,9 @@ from typing import Protocol
 # Grid basics
 # ---------------------------------------------------------------------------
 
+DEATH_DURATION = 1.6          # Seconds the death animation lasts.
+
+
 class Direction(Enum):
     """Movement directions. The value is the (dx, dy) step on the grid.
 
@@ -120,6 +123,7 @@ class Player:
         move_progress: Part of the way to the next cell already done (0-1).
         facing: Last direction the player moved in. The ghosts use it to
             guess where the player is going, even if it is standing.
+        death_timer: Seconds left of the death animation (0 = not dying).
     """
 
     spawn: Position
@@ -131,6 +135,7 @@ class Player:
     next_direction: Direction = Direction.NONE
     move_progress: float = 0.0
     facing: Direction = Direction.LEFT
+    death_timer: float = 0.0
 
     def __post_init__(self) -> None:
         """Start on the spawn cell."""
@@ -140,6 +145,31 @@ class Player:
     def is_alive(self) -> bool:
         """True while at least one life is left."""
         return self.lives > 0
+
+    @property
+    def is_dying(self) -> bool:
+        """True while the death animation is running."""
+        return self.death_timer > 0
+
+    @property
+    def death_progress(self) -> float:
+        """0 when the death starts, 1 when it ends."""
+        return 1.0 - max(0.0, self.death_timer) / DEATH_DURATION
+
+    def start_dying(self) -> None:
+        """Lose a life and start the death animation."""
+        self.lose_life()
+        self.death_timer = DEATH_DURATION
+
+    def update_death(self, delta_time: float) -> bool:
+        """Advance the death animation. True when it has just ended."""
+        if not self.is_dying:
+            return False
+        self.death_timer -= delta_time
+        if self.death_timer <= 0:
+            self.death_timer = 0.0
+            return True
+        return False
 
     def add_score(self, points: int) -> None:
         """Add points. Negative values are ignored: the score never drops."""

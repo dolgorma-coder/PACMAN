@@ -34,6 +34,8 @@ import pygame
 
 from src.models.entity_models import Direction, exact_position
 
+DEATH_FRAMES = 12             # Frames of the death row (row 4) in the sheet.
+
 
 class GameRenderer:
     """Handles low-level sprite rendering and autotiling logic using Pygame."""
@@ -53,11 +55,7 @@ class GameRenderer:
         """
         self.screen = screen
         self.tile_size = tile_size
-        self.death_frame = -1
-        self.death_timer = 0
-        self.last_lives = None
-        self.death_x_pos = 0
-        self.death_y_pos = 0
+
 
         self._sprite_cache: dict[tuple[int, int, int], pygame.Surface] = {}
         self._eyes_originals: dict[Direction, pygame.Surface] = {}
@@ -335,65 +333,22 @@ class GameRenderer:
         current_px = int(p_x * self.tile_size)
         current_py = int(p_y * self.tile_size)
 
-        spawn_x = int(player_model.spawn.x * self.tile_size)
-        spawn_y = int(player_model.spawn.y * self.tile_size)
-
-        if self.last_lives is None:
-            self.last_lives = player_model.lives
-            self.prev_alive_x = current_px
-            self.prev_alive_y = current_py
-
-        # Trigger death sequence when a life counter drops
-        if player_model.lives < self.last_lives and self.death_frame == -1:
-            self.death_frame = 0
-            self.death_timer = pygame.time.get_ticks()
-            self.death_x_pos = self.prev_alive_x
-            self.death_y_pos = self.prev_alive_y
-
-        if self.death_frame == -1:
-            if (current_px != 0 and current_py != 0 and
-                    current_px != spawn_x and current_py != spawn_y):
-                self.prev_alive_x = current_px
-                self.prev_alive_y = current_py
-
-        # PAC-MAN DEATH ANIMATION SEQUENCE
-        if self.death_frame != -1:
-            now = pygame.time.get_ticks()
-            if now - self.death_timer > 130:
-                self.death_frame += 1
-                self.death_timer = now
-
-            if self.death_frame < 12:
-                death_sprite = self.get_pacman_tile(self.death_frame, 4)
-                self.screen.blit(death_sprite,
-                                 (self.death_x_pos, self.death_y_pos))
-                return
-            else:
-                self.death_frame = -1
-                self.last_lives = player_model.lives
-
-        # STANDARD GAMEPLAY STATE REFRESH
-        ticks = pygame.time.get_ticks() // 70
-        anim_sequence = [0, 1, 2, 1]
-        mouth_phase = anim_sequence[ticks % 4]
-
-        current_dir = player_model.direction
-        if current_dir == Direction.NONE:
-            pacman_sprite = self.get_pacman_tile(2, 0)
+        if player_model.is_dying:
+            # Frame chosen from the engine's progress: always in sync.
+            frame = min(DEATH_FRAMES - 1,
+                        int(player_model.death_progress * DEATH_FRAMES))
+            pacman_sprite = self.get_pacman_tile(frame, 4)
         else:
-            col_idx = mouth_phase
-            if current_dir == Direction.RIGHT:
-                row_idx = 0
-            elif current_dir == Direction.LEFT:
-                row_idx = 1
-            elif current_dir == Direction.UP:
-                row_idx = 2
-            elif current_dir == Direction.DOWN:
-                row_idx = 3
+            ticks = pygame.time.get_ticks() // 70
+            mouth_phase = [0, 1, 2, 1][ticks % 4]
+            current_dir = player_model.direction
+            if current_dir == Direction.NONE:
+                pacman_sprite = self.get_pacman_tile(2, 0)
             else:
-                row_idx = 0
-
-            pacman_sprite = self.get_pacman_tile(col_idx, row_idx)
+                row_idx = {Direction.RIGHT: 0, Direction.LEFT: 1,
+                           Direction.UP: 2, Direction.DOWN: 3}.get(
+                               current_dir, 0)
+                pacman_sprite = self.get_pacman_tile(mouth_phase, row_idx)
         self.screen.blit(pacman_sprite, (current_px, current_py))
 
         # --- B. GHOSTS RENDERING ---
