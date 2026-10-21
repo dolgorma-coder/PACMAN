@@ -39,7 +39,7 @@ GAME_LIMITS: dict[str, tuple[float, float]] = {
     "player_speed": (1.0, 20.0),
     "ghost_speed": (1.0, 20.0),
 }
-LEVEL_SIZE_LIMITS = (10, 60)
+LEVEL_SIZE_LIMITS = (10, 25)
 
 
 class ConfigError(Exception):

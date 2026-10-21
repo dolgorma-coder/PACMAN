@@ -169,7 +169,7 @@ def choose_direction(ghost: Ghost, context: GhostContext,
     options = maze.open_directions(ghost.position)
     if not options:
         return Direction.NONE
-    
+
     if ghost.is_eaten:                        # Eyes: go straight home.
         if ghost.position == ghost.home:
             return Direction.NONE
@@ -177,7 +177,7 @@ def choose_direction(ghost: Ghost, context: GhostContext,
         return min(options, key=lambda d: (
             distances.get(ghost.position.moved(d), UNREACHABLE),
             TIE_ORDER.index(d)))
-    
+
     # No turning back, unless it is the only way.
     ahead = [d for d in options if d != ghost.direction.opposite] or options
 

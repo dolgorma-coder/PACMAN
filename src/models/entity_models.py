@@ -175,7 +175,6 @@ class GhostState(Enum):
     EATEN = auto()     # Was eaten: eyes go back home as original pacman
 
 
-
 @dataclass
 class Ghost:
     """An enemy ghost.
@@ -216,14 +215,14 @@ class Ghost:
     def is_edible(self) -> bool:
         """True if the player can eat this ghost right now."""
         return self.state == GhostState.EDIBLE
-   
+
     @property
     def at_home(self) -> bool:
         """True when the ghost is standing still on its home cell."""
         return (self.position == self.home
                 and self.direction == Direction.NONE
                 and self.move_progress == 0.0)
-    
+
     @property
     def is_eaten(self) -> bool:
         """True while the ghost waits at home to respawn."""
@@ -282,7 +281,6 @@ class Ghost:
             self.timer = 0.0
             self.state = GhostState.CHASING
 
-            
     def reset(self, home: Position | None = None) -> None:
         """Go home and become dangerous again (life lost or new level)."""
         if home is not None:

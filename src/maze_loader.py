@@ -56,7 +56,7 @@ def load_maze(level: LevelConfig) -> Maze:
         # Package assigned to us (change this import if its name is
         # different). It is imported here so that a missing package is a
         # clean MazeError instead of a crash at start-up.
-        from mazegenerator import MazeGenerator  # type: ignore
+        from mazegenerator import MazeGenerator
 
         # perfect=False makes loops and removes dead ends: corridors that
         # are good for Pac-Man (required by the subject).

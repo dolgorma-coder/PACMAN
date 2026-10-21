@@ -55,6 +55,7 @@ RETRIES = 3                   # Random mazes tried when a level fails.
 ANGRY_GHOST = "blinky"
 EATEN_SPEED_FACTOR = 1      # Eyes rush back home.
 
+
 class GameEngine:
     """Runs one game, from the first level to victory or game over."""
 

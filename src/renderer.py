@@ -30,7 +30,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-import pygame  # type: ignore
+import pygame
 
 from src.models.entity_models import Direction, exact_position
 
@@ -137,7 +137,7 @@ class GameRenderer:
                         row_index: int) -> pygame.Surface:
         """Slice a single 32x32 ghost sprite using the Figma layout."""
         return self._slice_sprite(col_index, row_index, self.ghost_sheet)
-    
+
     def _draw_ghost_eyes(self, left: int, top: int,
                          direction: Direction) -> None:
         """Draw only the eyes of an eaten ghost (no body).
@@ -170,7 +170,7 @@ class GameRenderer:
                 self.screen, (33, 33, 255),
                 (eye_x + direction.dx * reach,
                  center_y + direction.dy * reach), pupil_radius)
-            
+
     # -----------------------------------------------------------------
     # Maze, player, ghosts
     # -----------------------------------------------------------------

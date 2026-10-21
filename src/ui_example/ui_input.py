@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import pygame  # type: ignore
+import pygame
 
 from src.models.app_models import Command, Screen
 
@@ -41,6 +41,7 @@ GAME_ONLY_KEYS: dict[int, Command] = {
     pygame.K_6: Command.CHEAT_LIFE,
     pygame.K_m: Command.MAIN_MENU,
 }
+
 
 @dataclass
 class FrameInput:

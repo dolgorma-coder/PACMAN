@@ -183,7 +183,7 @@ class App:
         elif command == Command.MAIN_MENU:     # Leave without saving.
             self.engine = None
             self.screen = Screen.MENU
-            
+
     # -----------------------------------------------------------------
     # End of game
     # -----------------------------------------------------------------

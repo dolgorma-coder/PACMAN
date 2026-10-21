@@ -29,7 +29,7 @@ import time
 from collections.abc import Callable
 from typing import Any, Literal
 
-import pygame  # type: ignore
+import pygame
 
 from src.ui_example.ui_theme import WHITE, Color
 from src.renderer import GameRenderer
