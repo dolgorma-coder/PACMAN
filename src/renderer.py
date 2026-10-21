@@ -59,6 +59,13 @@ class GameRenderer:
         self.death_x_pos = 0
         self.death_y_pos = 0
 
+        self._sprite_cache: dict[tuple[int, int, int], pygame.Surface] = {}
+        self._eyes_originals: dict[Direction, pygame.Surface] = {}
+        # ... en el bucle de carga de ojos:
+        # self._eyes_originals[direction] = pygame.image.load(...).
+        # convert_alpha()
+        self.eyes_sprites = dict(self._eyes_originals)
+
         # Load graphic sheets from the project assets directory
         assets_dir = os.path.join(os.path.dirname(__file__), "assets")
         self.pacman_sheet = pygame.image.load(
@@ -98,27 +105,34 @@ class GameRenderer:
 
     def _slice_sprite(self, col_index: int, row_index: int,
                       sheet: pygame.Surface) -> pygame.Surface:
-        """Helper to slice a 32x32 asset from a given sheet with Figma padding.
+        """Slice a sprite, scaled to `tile_size`. Results are cached."""
+        key = (id(sheet), col_index, row_index)
+        cached = self._sprite_cache.get(key)
+        if cached is not None:
+            return cached
 
-        Args:
-            col_index: The column index of the asset in the sprite grid.
-            row_index: The row index of the asset in the sprite grid.
-            sheet: The source Pygame surface to slice the texture from.
-
-        Returns:
-            A new isolated 32x32 transparent Pygame surface containing the
-            sprite.
-        """
-        start_x = 16
-        start_y = 16
-        step = 32 + 20  # 32px element + 20px spacer gap
-
-        exact_x = start_x + (col_index * step)
-        exact_y = start_y + (row_index * step)
-
+        exact_x = 16 + col_index * 52
+        exact_y = 16 + row_index * 52
         sprite = pygame.Surface((32, 32), pygame.SRCALPHA)
         sprite.blit(sheet, (0, 0), (exact_x, exact_y, 32, 32))
+        if self.tile_size != 32:
+            sprite = scale_nearest(sprite, self.tile_size, self.tile_size)
+        self._sprite_cache[key] = sprite
         return sprite
+
+    def set_tile_size(self, size: int) -> None:
+        """Change the cell size; sprites are rescaled once, lazily."""
+        if size == self.tile_size:
+            return
+        self.tile_size = size
+        self._sprite_cache.clear()
+        factor = size / 32
+        self.eyes_sprites = {
+            direction: scale_nearest(
+                image,
+                max(1, round(image.get_width() * factor)),
+                max(1, round(image.get_height() * factor)))
+            for direction, image in self._eyes_originals.items()}
 
     def get_wall_tile(self, col_index: int, row_index: int) -> pygame.Surface:
         """Slice a single 32x32 wall tile from the wall sheet."""
@@ -430,3 +444,20 @@ class GameRenderer:
 
             ghost_sprite = self.get_ghosts_tile(g_col_idx, g_row_idx)
             self.screen.blit(ghost_sprite, (gx, gy))
+
+
+def scale_nearest(source: pygame.Surface, width: int,
+                  height: int) -> pygame.Surface:
+    """Scale an image with nearest-neighbour (no blur, pixel art friendly).
+
+    Only reads and writes single pixels, so it can be rewritten on top of
+    an MLX image buffer. It is slow, so call it once per sprite and cache
+    the result, never every frame.
+    """
+    src_w, src_h = source.get_size()
+    result = pygame.Surface((width, height), pygame.SRCALPHA)
+    for y in range(height):
+        src_y = y * src_h // height
+        for x in range(width):
+            result.set_at((x, y), source.get_at((x * src_w // width, src_y)))
+    return result

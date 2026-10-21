@@ -108,7 +108,7 @@ class Canvas:
             self.menu_logo_img = pygame.image.load(logo_path)
         except pygame.error:
             self.menu_logo_img = None
-        self.game_renderer = GameRenderer(self._target, tile_size=32)
+        self.game_renderer = GameRenderer(self._target, tile_size=128)
 
         ui_sprites_path = os.path.join(assets_dir, "ui_sprites.png")
         try:
@@ -300,41 +300,27 @@ class Canvas:
         # Synchronize the renderer target screen with current canvas buffer
         self.game_renderer.screen = self._target
 
-        # Calculate base pixel dimensions of the raw maze layout
-        maze_w = len(grid) * 32 if (grid and len(grid) > 0) else 0
-        maze_h = len(grid) * 32 if grid else 0
-
-        # Calculate bounding boxes for the permitted gameplay zone
+        rows = len(grid)
+        cols = len(grid[0]) if rows else 0
         max_w = self.width - 80
         max_h = self.height - hud_top - hud_bottom
 
-        # Compute aspect-ratio scale scaling factor
-        scale_w = max_w / maze_w if maze_w > 0 else 1.0
-        scale_h = max_h / maze_h if maze_h > 0 else 1.0
-        scale_ratio = min(scale_w, scale_h, 1.0)
+        # Biggest whole tile size (up to 32 px) that fits the maze.
+        tile = max(1, min(max_w // max(1, cols), max_h // max(1, rows), 32))
+        self.game_renderer.set_tile_size(tile)
 
-        final_w = int(maze_w * scale_ratio)
-        final_h = int(maze_h * scale_ratio)
-
-        # Center the fields dynamically
+        final_w = cols * tile
+        final_h = rows * tile
         offset_x = (self.width - final_w) // 2
         offset_y = hud_top + (max_h - final_h) // 2
 
-        # Draw the maze graphics onto a clean isolated Pygame surface
-        maze_surface = pygame.Surface((maze_w, maze_h), pygame.SRCALPHA)
+        # Draw directly at final size, then paste 1:1 (no scaling).
+        maze_surface = pygame.Surface((final_w, final_h), pygame.SRCALPHA)
         orig_screen = self.game_renderer.screen
         self.game_renderer.screen = maze_surface
-
         self.game_renderer.draw_maze(grid, pacgums, super_pacgums)
         self.game_renderer.draw_entities(player, ghosts)
-
-        # Project and compress the finalized frame onto the main screen target
         self.game_renderer.screen = orig_screen
-        if scale_ratio < 1.0:
-            scaled = pygame.transform.smoothscale(maze_surface,
-                                                  (final_w, final_h))
-            self._target.blit(scaled, (offset_x, offset_y))
-        else:
-            self._target.blit(maze_surface, (offset_x, offset_y))
+        self._target.blit(maze_surface, (offset_x, offset_y))
 
         return offset_x, offset_y, final_w

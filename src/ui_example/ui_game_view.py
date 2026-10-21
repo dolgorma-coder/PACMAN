@@ -9,7 +9,6 @@ import pygame
 
 from src.app import App
 from src.models.game_state import GameStatus
-from src.renderer import GameRenderer
 from src.ui_example.ui_canvas import Canvas
 from src.ui_example.ui_theme import (DARK_BLUE, WHITE, NEON_YELLOW,
                                      TEXT_WHITE,
@@ -27,8 +26,6 @@ class GameView:
         if pygame_screen is None:
             pygame_screen = getattr(
                 canvas, '_screen', pygame.display.get_surface())
-
-        self.game_renderer = GameRenderer(pygame_screen, tile_size=32)
 
     def draw(self, app: App, now: int) -> None:
         """Draw the game view, including maze,
