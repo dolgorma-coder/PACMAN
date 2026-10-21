@@ -9,13 +9,13 @@
   "level_max_time": 120,
   "levels": [
     { "level_id": 1, "width": 15, "height": 15 },
-    { "level_id": 2, "width": 17, "height": 17 },
-    { "level_id": 3, "width": 19, "height": 19 },
-    { "level_id": 4, "width": 21, "height": 21 },
-    { "level_id": 5, "width": 23, "height": 23 },
+    { "level_id": 2, "width": 10, "height": 25 },
+    { "level_id": 3, "width": 19, "height": 29 },
+    { "level_id": 4, "width": 21, "height": 27 },
+    { "level_id": 5, "width": 28, "height": 28 },
     { "level_id": 6, "width": 25, "height": 25 },
-    { "level_id": 7, "width": 27, "height": 27 },
-    { "level_id": 8, "width": 28, "height": 31 },
+    { "level_id": 7, "width": 27, "height": 30 },
+    { "level_id": 8, "width": 35, "height": 31 },
     { "level_id": 9, "width": 28, "height": 31 },
     { "level_id": 10, "width": 28, "height": 31 }
   ]

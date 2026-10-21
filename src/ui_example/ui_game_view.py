@@ -84,7 +84,8 @@ class GameView:
 
         self.canvas.text("TIME: ", start_time_x, text_y, LIGHT_BLUE, 20)
         self.canvas.text(
-            time_digits, start_time_x + (6 * 16), digits_y, WHITE, 16)
+            time_digits, start_time_x + (6 * 16), digits_y, WHITE, 16)  # ❤️ ДИНАМИЧЕСКАЯ НИЖНЯЯ ПАНЕЛЬ ЖИЗНЕЙ (Strictly using get_pacman_tile)
+        # =====================================================================
 
         # --- 3. АВТОЛЕЙАУТ ДЛЯ LEVEL ---
         level_str = str(state_obj.level_number)
@@ -126,14 +127,15 @@ class GameView:
         # ❤️ ДИНАМИЧЕСКАЯ НИЖНЯЯ ПАНЕЛЬ ЖИЗНЕЙ (Strictly using get_pacman_tile)
         # =====================================================================
         lives_y = offset_y + final_maze_w + 20
-        self.canvas.text("LIVES: ", offset_x, lives_y, WHITE, 16)
+        self.canvas.text("LIVES: ", offset_x, self.canvas.height - 62, WHITE, 16)
+        # self.canvas.text("LIVES: ", offset_x, lives_y, WHITE, 16)
 
         for i in range(player_model.lives):
             life_x = offset_x + 95 + (i * 38)
             if hasattr(self.canvas, 'game_renderer'):
                 life_sprite = self.canvas.game_renderer.get_pacman_tile(2, 0)
                 self.canvas._target.blit(   # type: ignore
-                    life_sprite, (life_x, lives_y - 6))
+                    life_sprite, (life_x, self.canvas.height - 68))
 
         # =====================================================================
         # 👑 БЛОК ПАУЗЫ (Полностью на твоем PNG-спрайте 520х280 из Figma)

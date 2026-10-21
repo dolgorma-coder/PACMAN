@@ -84,7 +84,7 @@ class Canvas:
         except pygame.error as error:
             raise CanvasError(f"Cannot open the window: {error}") from error
         pygame.display.set_caption(title)
-        self.width = width
+        self.width: int = width
         self.height = height
         self._target = self._screen          # Where the drawing goes.
         self._clock = pygame.time.Clock()
@@ -96,6 +96,7 @@ class Canvas:
         assets_dir = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "assets"
             )
+        self.menu_bg: pygame.Surface | None = None
         bg_path = os.path.join(assets_dir, "background.jpg")
         try:
             raw_bg = pygame.image.load(bg_path).convert()
