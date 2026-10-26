@@ -1,46 +1,22 @@
-# Pac-Man configuration (JSON with comments).
-# Lines starting with # or // are comments. Unknown keys are ignored.
-# Invalid or missing values are replaced by safe defaults (a warning is shown).
 {
-    # File where the top 10 scores are saved.
-    "highscore_filename": "highscores.json",
-
-    # Lives at the start of the game (1 to 99).
-    "lives": 3,
-
-    # Score of each item.
-    "points_per_pacgum": 10,
-    "points_per_super_pacgum": 50,
-    "points_per_ghost": 200,
-
-    # Seed of the first maze (0 = random). The next levels are random.
-    "seed": 42,
-
-    # Time limit of each level, in seconds (10 to 3600).
-    "level_max_time": 90,
-
-    # Seconds the ghosts stay edible after a super-pacgum (1 to 60).
-    "super_pacgum_duration": 8,
-
-    # Seconds an eaten ghost waits at home before coming back (1 to 60).
-    "ghost_respawn_delay": 5,
-
-    # Speeds, in cells per second (1 to 20).
-    "player_speed": 9,
-    "ghost_speed": 5,
-
-    # Levels in play order. Size: 10 to 60 cells. A level can set its own
-    # "seed"; the global seed goes to the first level without one.
-    "levels": [
-    {"width": 20, "height": 20},
-    {"width": 15, "height": 15},
-    {"width": 16, "height": 16},
-    {"width": 16, "height": 16},
-    {"width": 17, "height": 17},
-    {"width": 17, "height": 17},
-    {"width": 18, "height": 18},
-    {"width": 18, "height": 18},
-    {"width": 19, "height": 19},
-    {"width": 19, "height": 19}
-    ]
+  "highscore_filename": "highscores.json",
+  "lives": 3,
+  "pacgum": 50,
+  "points_per_pacgum": 10,
+  "points_per_super_pacgum": 50,
+  "points_per_ghost": 200,
+  "seed": 42,
+  "level_max_time": 120,
+  "levels": [
+    { "level_id": 1, "width": 15, "height": 15 },
+    { "level_id": 2, "width": 10, "height": 10 },
+    { "level_id": 3, "width": 15, "height": 15 },
+    { "level_id": 4, "width": 20, "height": 20 },
+    { "level_id": 5, "width": 20, "height": 22 },
+    { "level_id": 6, "width": 25, "height": 25 },
+    { "level_id": 7, "width": 25, "height": 20 },
+    { "level_id": 8, "width": 35, "height": 31 },
+    { "level_id": 9, "width": 28, "height": 31 },
+    { "level_id": 10, "width": 28, "height": 31 }
+  ]
 }

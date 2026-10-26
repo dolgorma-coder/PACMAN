@@ -15,6 +15,9 @@ from typing import Protocol
 # Grid basics
 # ---------------------------------------------------------------------------
 
+DEATH_DURATION = 1.6          # Seconds the death animation lasts.
+
+
 class Direction(Enum):
     """Movement directions. The value is the (dx, dy) step on the grid.
 
@@ -120,6 +123,7 @@ class Player:
         move_progress: Part of the way to the next cell already done (0-1).
         facing: Last direction the player moved in. The ghosts use it to
             guess where the player is going, even if it is standing.
+        death_timer: Seconds left of the death animation (0 = not dying).
     """
 
     spawn: Position
@@ -131,6 +135,7 @@ class Player:
     next_direction: Direction = Direction.NONE
     move_progress: float = 0.0
     facing: Direction = Direction.LEFT
+    death_timer: float = 0.0
 
     def __post_init__(self) -> None:
         """Start on the spawn cell."""
@@ -140,6 +145,31 @@ class Player:
     def is_alive(self) -> bool:
         """True while at least one life is left."""
         return self.lives > 0
+
+    @property
+    def is_dying(self) -> bool:
+        """True while the death animation is running."""
+        return self.death_timer > 0
+
+    @property
+    def death_progress(self) -> float:
+        """0 when the death starts, 1 when it ends."""
+        return 1.0 - max(0.0, self.death_timer) / DEATH_DURATION
+
+    def start_dying(self) -> None:
+        """Lose a life and start the death animation."""
+        self.lose_life()
+        self.death_timer = DEATH_DURATION
+
+    def update_death(self, delta_time: float) -> bool:
+        """Advance the death animation. True when it has just ended."""
+        if not self.is_dying:
+            return False
+        self.death_timer -= delta_time
+        if self.death_timer <= 0:
+            self.death_timer = 0.0
+            return True
+        return False
 
     def add_score(self, points: int) -> None:
         """Add points. Negative values are ignored: the score never drops."""
@@ -172,7 +202,7 @@ class GhostState(Enum):
 
     CHASING = auto()   # Normal: hunts the player (or goes to its corner).
     EDIBLE = auto()    # Super-pacgum eaten: runs away, can be eaten.
-    EATEN = auto()     # Was eaten: waits at home before coming back.
+    EATEN = auto()     # Was eaten: eyes go back home as original pacman
 
 
 @dataclass
@@ -188,6 +218,9 @@ class Ghost:
         direction: Direction of the current movement (NONE = standing).
         state: Current behaviour mode.
         timer: Seconds left in the EDIBLE or EATEN state.
+        edible_left: Seconds of super-pacgum effect that remain while the
+            ghost is EATEN. When it comes back it is edible again for
+            that time, so it stays blue until the effect ends.
         move_progress: Part of the way to the next cell already done (0-1).
         angry: True while the ghost is in its "angry" mode (Blinky when few
             pacgums are left): it is faster and never stops chasing.
@@ -200,6 +233,7 @@ class Ghost:
     direction: Direction = Direction.NONE
     state: GhostState = GhostState.CHASING
     timer: float = 0.0
+    edible_left: float = 0.0
     move_progress: float = 0.0
     angry: bool = False
 
@@ -213,27 +247,64 @@ class Ghost:
         return self.state == GhostState.EDIBLE
 
     @property
+    def at_home(self) -> bool:
+        """True when the ghost is standing still on its home cell."""
+        return (self.position == self.home
+                and self.direction == Direction.NONE
+                and self.move_progress == 0.0)
+
+    @property
     def is_eaten(self) -> bool:
         """True while the ghost waits at home to respawn."""
         return self.state == GhostState.EATEN
 
     def make_edible(self, duration: float) -> None:
-        """Become edible for `duration` seconds (ignored if eaten)."""
-        if not self.is_eaten:
+        """Become edible for `duration` seconds.
+
+        If the ghost is eaten, it will come back already edible, for
+        whatever is left of the effect.
+        """
+        if self.is_eaten:
+            self.edible_left = duration
+        else:
             self.state = GhostState.EDIBLE
             self.timer = duration
 
     def get_eaten(self, respawn_delay: float) -> None:
-        """Go back home and wait `respawn_delay` seconds before chasing."""
+        """Become eyes: go home and wait `respawn_delay` seconds there.
+
+        The ghost keeps moving from where it was eaten (the engine steers it
+        home). The remaining edible time is kept, so it comes back blue if
+        the super-pacgum effect is still running.
+        """
+        self.edible_left = self.timer if self.is_edible else 0.0
         self.state = GhostState.EATEN
         self.timer = respawn_delay
-        self.position = self.home
-        self.direction = Direction.NONE
-        self.move_progress = 0.0
 
     def update_timer(self, delta_time: float) -> None:
-        """Advance the countdown; at zero the ghost goes back to CHASING."""
+        """Advance the countdown.
+
+        EDIBLE ends in CHASING. EATEN waits until the ghost is back home,
+        then counts the respawn delay and ends in EDIBLE if the
+        super-pacgum effect is still active, or in CHASING otherwise.
+        """
         if self.state == GhostState.CHASING:
+            return
+        if self.state == GhostState.EATEN:
+            # The effect keeps running while the eyes travel and wait.
+            self.edible_left = max(0.0, self.edible_left - delta_time)
+            if not self.at_home:
+                return
+            self.timer -= delta_time
+            if self.timer > 0:
+                return
+            if self.edible_left > 0:
+                self.state = GhostState.EDIBLE
+                self.timer = self.edible_left
+            else:
+                self.state = GhostState.CHASING
+                self.timer = 0.0
+            self.edible_left = 0.0
             return
         self.timer -= delta_time
         if self.timer <= 0:
@@ -241,15 +312,12 @@ class Ghost:
             self.state = GhostState.CHASING
 
     def reset(self, home: Position | None = None) -> None:
-        """Go home and become dangerous again (life lost or new level).
-
-        Args:
-            home: New home cell for a new maze. None keeps the current one.
-        """
+        """Go home and become dangerous again (life lost or new level)."""
         if home is not None:
             self.home = home
         self.position = self.home
         self.direction = Direction.NONE
         self.state = GhostState.CHASING
         self.timer = 0.0
+        self.edible_left = 0.0
         self.move_progress = 0.0

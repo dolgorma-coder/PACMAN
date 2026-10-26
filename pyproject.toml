@@ -1,10 +1,8 @@
 [project]
 name = "pacman"
 version = "1.0.0"
-authors = [
-	dzhambal
-	jaatif-a
-]
+   authors = [{ name = "dzhambal" }, { name = "jaatif-a" }]
+
 description = "Pac-Man game developed for the 42 cursus."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -39,8 +37,6 @@ ignore_missing_imports = true
 disallow_untyped_defs = true
 check_untyped_defs = true
 
-[tool.flake8]
-max-line-length = 79
 exclude = [
     ".venv",
     "__pycache__",

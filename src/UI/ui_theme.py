@@ -4,7 +4,7 @@ from __future__ import annotations
 
 Color = tuple[int, int, int]
 
-WINDOW_WIDTH = 960
+WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 WINDOW_TITLE = "Pac-Man"
 FPS = 60
@@ -19,7 +19,7 @@ END_SCREEN_LOCK_MS = 600   # Input ignored right after a game ends, so keys
 BLACK: Color = (0, 0, 0)
 WHITE: Color = (255, 255, 255)
 GRAY: Color = (150, 150, 150)
-YELLOW: Color = (255, 221, 0)
+YELLOW: Color = (251, 233, 35)
 GOLD: Color = (255, 190, 40)
 RED: Color = (235, 60, 60)
 GREEN: Color = (80, 220, 100)
@@ -29,6 +29,12 @@ PELLET: Color = (255, 205, 160)
 HIGHLIGHT: Color = (30, 40, 110)
 PANEL: Color = (15, 15, 45)
 SCARED_BLUE: Color = (60, 90, 255)
+NEON_ORANGE = (232, 109, 5)
+NEON_YELLOW = (234, 180, 20)
+DARK_BLUE = (16, 16, 28)
+GRAY_BORDER = (93, 72, 103)
+TEXT_WHITE = (222, 222, 255)
+LIGHT_BLUE = (9, 238, 235)
 
 GHOST_COLORS: dict[str, Color] = {
     "blinky": (240, 50, 50),

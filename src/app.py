@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from src.models.app_models import Command, MenuItem, PauseItem, Screen
+from src.models.app_models import Command, MenuItem, Screen
 from src.models.config_models import GameConfig
 from src.models.entity_models import Direction
 from src.game_engine import GameEngine
@@ -59,7 +59,6 @@ class App:
         running: False once the player chose Exit.
         highscores: The highscore table (best first).
         menu_index: Selected entry of the main menu (see `MenuItem`).
-        pause_index: Selected entry of the pause menu (see `PauseItem`).
         engine: The game in progress, if any.
         message: One-line notice to display (errors), empty if none.
         final_score: Score of the game that just ended.
@@ -74,7 +73,6 @@ class App:
         self.running = True
         self.highscores = load_highscores(config.highscore_filename)
         self.menu_index = 0
-        self.pause_index = 0
         self.engine: GameEngine | None = None
         self.message = ""
         self.final_score = 0
@@ -174,24 +172,17 @@ class App:
         elif command in DIRECTION_COMMANDS:
             engine.set_direction(DIRECTION_COMMANDS[command])
         elif command in (Command.PAUSE, Command.BACK):
-            self.pause_index = 0
             engine.toggle_pause()
         elif command in CHEAT_COMMANDS:
             CHEAT_COMMANDS[command](engine)
 
     def _pause_command(self, engine: GameEngine, command: Command) -> None:
-        """Navigate the pause menu."""
-        items = list(PauseItem)
-        self.pause_index = _move_selection(self.pause_index, len(items),
-                                           command)
+        """Pause screen: P / Escape resume, M goes to the main menu."""
         if command in (Command.PAUSE, Command.BACK):
             engine.toggle_pause()
-        elif command == Command.CONFIRM:
-            if items[self.pause_index] == PauseItem.RESUME:
-                engine.toggle_pause()
-            else:                              # Leave without saving.
-                self.engine = None
-                self.screen = Screen.MENU
+        elif command == Command.MAIN_MENU:     # Leave without saving.
+            self.engine = None
+            self.screen = Screen.MENU
 
     # -----------------------------------------------------------------
     # End of game

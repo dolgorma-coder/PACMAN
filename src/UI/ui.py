@@ -13,14 +13,14 @@ from __future__ import annotations
 
 from src.app import App
 from src.models.app_models import Screen
-from src.ui_example.ui_canvas import Canvas, CanvasError
-from src.ui_example.ui_game_view import GameView
-from src.ui_example.ui_input import read_input
-from src.ui_example.ui_menu_views import (draw_game_end, draw_highscores,
-                                          draw_instructions, draw_menu)
-from src.ui_example.ui_theme import (BLACK, END_SCREEN_LOCK_MS,
-                                     FPS, WINDOW_HEIGHT, WINDOW_TITLE,
-                                     WINDOW_WIDTH)
+from src.UI.ui_canvas import Canvas, CanvasError
+from src.UI.ui_game_view import GameView
+from src.UI.ui_input import read_input
+from src.UI.ui_menu_views import (draw_game_end, draw_highscores,
+                                  draw_instructions, draw_menu)
+from src.UI.ui_theme import (BLACK, END_SCREEN_LOCK_MS,
+                             FPS, WINDOW_HEIGHT, WINDOW_TITLE,
+                             WINDOW_WIDTH)
 
 
 class UIError(Exception):
@@ -69,7 +69,7 @@ class Ui:
             self.app.running = False
             return
         if now < self._locked_until:
-            return                       # Keys used to play: not a name.
+            return
         for action in frame_input.actions:
             if isinstance(action, str):
                 self.app.handle_text(action)

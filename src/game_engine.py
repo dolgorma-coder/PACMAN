@@ -53,6 +53,7 @@ CHEAT_SPEED_FACTOR = 2.0      # Speed multiplier of the "fast player" cheat.
 MAX_LIVES = 99
 RETRIES = 3                   # Random mazes tried when a level fails.
 ANGRY_GHOST = "blinky"
+EATEN_SPEED_FACTOR = 1      # Eyes rush back home.
 
 
 class GameEngine:
@@ -146,18 +147,24 @@ class GameEngine:
         if not self._playing() or not delta_time > 0:
             return
         dt = min(delta_time, MAX_FRAME_TIME)
+        player = self.state.player
+
+        if player.is_dying:
+            if player.update_death(dt):
+                self._after_death()
+            return
 
         self.state.time_left -= dt
         if self.state.time_left <= 0:
             self._on_timeout()
-            if not self._playing():
+            if not self._playing() or player.is_dying:
                 return
 
         steps = max(1, math.ceil(self._closing_speed() * dt
                                  / MAX_STEP_DISTANCE))
         for _ in range(steps):
             self._advance(dt / steps)
-            if not self._playing():
+            if not self._playing() or player.is_dying:
                 return
 
     def _advance(self, dt: float) -> None:
@@ -173,7 +180,8 @@ class GameEngine:
     def _closing_speed(self) -> float:
         """Most cells per second two entities can approach each other."""
         ghost_speeds = [self._ghost_speed(ghost)
-                        for ghost in self.state.ghosts]
+                        for ghost in self.state.ghosts
+                        if not ghost.is_eaten]
         return self._player_speed() + max(ghost_speeds, default=0.0)
 
     # -----------------------------------------------------------------
@@ -246,8 +254,8 @@ class GameEngine:
         elif state.level.eat_super_pacgum(position):
             state.player.add_score(self.config.points_per_super_pacgum)
             for ghost in state.ghosts:
+                ghost.make_edible(self.config.super_pacgum_duration)
                 if not ghost.is_eaten:
-                    ghost.make_edible(self.config.super_pacgum_duration)
                     _reverse(ghost)
 
     # -----------------------------------------------------------------
@@ -256,6 +264,8 @@ class GameEngine:
 
     def _ghost_speed(self, ghost: Ghost) -> float:
         """Speed of a ghost in cells per second, in its current state."""
+        if ghost.is_eaten:
+            return ghost.speed * EATEN_SPEED_FACTOR
         if ghost.is_edible:
             return ghost.speed * EDIBLE_SPEED_FACTOR
         if ghost.angry:
@@ -279,8 +289,6 @@ class GameEngine:
         if self.state.cheats.freeze_ghosts:
             return
         for ghost in self.state.ghosts:
-            if ghost.is_eaten:
-                continue                  # Waiting at home.
             if ghost.direction == Direction.NONE:
                 ghost.direction = self._choose_direction(ghost)
             distance = self._ghost_speed(ghost) * dt
@@ -345,9 +353,12 @@ class GameEngine:
         return False
 
     def _lose_life(self) -> None:
-        """Take a life: game over, or everybody goes back to the start."""
+        """Take a life: the death animation starts, the game freezes."""
+        self.state.player.start_dying()
+
+    def _after_death(self) -> None:
+        """The animation ended: game over, or everybody back to the start."""
         player = self.state.player
-        player.lose_life()
         if not player.is_alive:
             self.state.status = GameStatus.GAME_OVER
             return
