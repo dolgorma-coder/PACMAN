@@ -1,6 +1,6 @@
 *This project has been created as part of the 42 curriculum by dzhambal, jaatif-a.*
 
-![Project Banner](cover.jpg)
+![Project Banner](Cover.jpg)
 
 <div align="center">
 
