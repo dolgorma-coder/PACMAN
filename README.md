@@ -1,5 +1,7 @@
 *This project has been created as part of the 42 curriculum by dzhambal, jaatif-a.*
 
+![Project Banner](cover.jpg)
+
 <div align="center">
 
 # 🟡 Pac-Man — Ghosts! More ghosts!
